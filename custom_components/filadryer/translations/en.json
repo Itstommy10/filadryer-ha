@@ -1,0 +1,175 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "FilaDryer S4",
+        "description": "Notify service to call when drying finishes (optional).",
+        "data": {
+          "notify_service": "Notify service"
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "Already configured",
+      "single_instance_allowed": "Already configured"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "FilaDryer S4",
+        "data": {
+          "notify_service": "Notify service"
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "status": {
+        "name": "Status",
+        "state": {
+          "idle": "Idle",
+          "drying": "Drying",
+          "done": "Done"
+        }
+      },
+      "end": {
+        "name": "Drying end"
+      }
+    },
+    "select": {
+      "material": {
+        "name": "Material"
+      },
+      "mode": {
+        "name": "Mode",
+        "state": {
+          "1": "MO1 timed",
+          "2": "MO2 humidity"
+        }
+      },
+      "unit": {
+        "name": "Unit",
+        "state": {
+          "C": "°C",
+          "F": "°F"
+        }
+      },
+      "led": {
+        "name": "LED",
+        "state": {
+          "flow": "Flowing",
+          "on": "Always on",
+          "off": "Off"
+        }
+      },
+      "preset": {
+        "name": "Preset"
+      }
+    },
+    "number": {
+      "temperature": {
+        "name": "Temperature"
+      },
+      "hours": {
+        "name": "Duration"
+      },
+      "humidity": {
+        "name": "Restart humidity"
+      }
+    },
+    "button": {
+      "start": {
+        "name": "Start drying"
+      },
+      "stop": {
+        "name": "Stop drying"
+      }
+    }
+  },
+  "services": {
+    "set": {
+      "name": "Set",
+      "description": "Change drying settings.",
+      "fields": {
+        "material": {
+          "name": "Material",
+          "description": "Filament type."
+        },
+        "temperature": {
+          "name": "Temperature",
+          "description": "Target SV (35–70)."
+        },
+        "unit": {
+          "name": "Unit",
+          "description": "C or F."
+        },
+        "hours": {
+          "name": "Hours",
+          "description": "Duration 1–99 h."
+        },
+        "mode": {
+          "name": "Mode",
+          "description": "1 = time, 2 = humidity."
+        },
+        "humidity": {
+          "name": "Humidity",
+          "description": "MO2 restart threshold (30–50%)."
+        },
+        "led": {
+          "name": "LED",
+          "description": "flow, on, off."
+        }
+      }
+    },
+    "start": {
+      "name": "Start drying",
+      "description": "Start the countdown, optionally from a preset.",
+      "fields": {
+        "hours": {
+          "name": "Hours",
+          "description": "Overrides the duration."
+        },
+        "preset": {
+          "name": "Preset",
+          "description": "Preset to load first."
+        }
+      }
+    },
+    "stop": {
+      "name": "Stop drying",
+      "description": "Cancel the countdown."
+    },
+    "save_preset": {
+      "name": "Save preset",
+      "description": "Save current settings as a preset.",
+      "fields": {
+        "name": {
+          "name": "Name",
+          "description": "Preset name."
+        }
+      }
+    },
+    "load_preset": {
+      "name": "Load preset",
+      "description": "Load a saved preset.",
+      "fields": {
+        "name": {
+          "name": "Name",
+          "description": "Preset name."
+        }
+      }
+    },
+    "delete_preset": {
+      "name": "Delete preset",
+      "description": "Delete a preset.",
+      "fields": {
+        "name": {
+          "name": "Name",
+          "description": "Preset name."
+        }
+      }
+    }
+  }
+}

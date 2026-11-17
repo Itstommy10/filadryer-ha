@@ -1,0 +1,213 @@
+/* FilaDryer S4 card — servita dall'integrazione "filadryer" */
+(() => {
+const LED = { flow: "Scorrevole", on: "Sempre acceso", off: "Spento" };
+const STATUS = { idle: "Inattivo", drying: "In asciugatura", done: "Completata" };
+const pad = (n) => String(n).padStart(2, "0");
+const hms = (s) => `${pad(Math.floor(s / 3600))}:${pad(Math.floor(s / 60) % 60)}:${pad(s % 60)}`;
+const esc = (t) => String(t ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+class FilaDryerCard extends HTMLElement {
+  setConfig(config) {
+    this._config = config || {};
+    this._step = 0;
+    this._open = this._config.show_steps ?? false;
+  }
+  static getStubConfig() { return {}; }
+  getCardSize() { return 7; }
+  getGridOptions() { return { columns: 12, min_columns: 6 }; }
+
+  set hass(hass) {
+    this._hass = hass;
+    const id = this._entityId();
+    const st = id && hass.states[id];
+    const key = st ? JSON.stringify([st.state, st.attributes]) : "none";
+    if (!this._root) this._build();
+    if (key !== this._key) { this._key = key; this._render(); }
+  }
+
+  _entityId() {
+    if (this._config.entity) return this._config.entity;
+    const ents = this._hass.entities || {};
+    const hit = Object.values(ents).find((e) => e.platform === "filadryer" && e.translation_key === "status");
+    if (hit) return hit.entity_id;
+    return Object.keys(this._hass.states).find((k) => k.startsWith("sensor.") && this._hass.states[k].attributes.steps && this._hass.states[k].attributes.materials);
+  }
+
+  _call(service, data = {}) {
+    this._hass.callService("filadryer", service, data).catch((e) => this._toast(e.message || String(e), true));
+  }
+
+  _toast(msg, err) {
+    const t = this._root.querySelector(".toast");
+    t.textContent = msg; t.classList.toggle("err", !!err);
+    clearTimeout(this._tt); this._tt = setTimeout(() => (t.textContent = ""), 4000);
+  }
+
+  _build() {
+    this._root = this.attachShadow({ mode: "open" });
+    this._root.innerHTML = `<style>
+:host{--fd-teal:#25c9a4;--fd-amber:#ffc466;--fd-lcd:#0a1a15;--fd-ink:#8dffe2;--fd-dim:#3d6e60}
+ha-card{padding:16px;overflow:hidden}
+.head{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.head ha-icon{color:var(--fd-teal)}
+.title{font-size:1.1rem;font-weight:600;flex:1}
+.pill{font-size:.75rem;padding:3px 10px;border-radius:99px;background:var(--secondary-background-color);color:var(--secondary-text-color);white-space:nowrap}
+.pill.drying{background:rgba(255,196,102,.18);color:#c98a1a}.pill.done{background:rgba(37,201,164,.18);color:#1b9c7f}
+.lcd{background:var(--fd-lcd);border-radius:12px;padding:14px 16px 12px;color:var(--fd-ink);font-family:"Chakra Petch",ui-monospace,monospace;box-shadow:inset 0 0 26px rgba(0,0,0,.6)}
+.lt{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.lab{font-size:.65rem;color:var(--fd-dim);letter-spacing:.15em}
+.val{font-size:1.5rem;font-weight:700;line-height:1.1}.val small{font-size:.8rem}
+.mid{text-align:center}.brand{font-size:.8rem;letter-spacing:.35em;color:var(--fd-dim)}
+.mat{font-size:1.25rem;font-weight:600;letter-spacing:.18em}
+.time{text-align:center;font-size:1.35rem;margin-top:8px;letter-spacing:.1em}
+.z{padding:1px 5px;border-radius:6px}.z.flash{animation:b 1s steps(2,start) infinite;background:rgba(255,196,102,.14);color:var(--fd-amber)}
+@keyframes b{50%{opacity:.25}}
+.bar{height:4px;border-radius:2px;background:rgba(141,255,226,.15);margin-top:8px;overflow:hidden}.bar i{display:block;height:100%;background:var(--fd-ink)}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+@media(max-width:420px){.grid{grid-template-columns:1fr}}
+label{display:block;font-size:.75rem;color:var(--secondary-text-color);margin-bottom:3px}
+select,input{width:100%;box-sizing:border-box;padding:8px 10px;border-radius:8px;border:1px solid var(--divider-color);background:var(--card-background-color);color:var(--primary-text-color);font:inherit;font-size:.9rem}
+.seg{display:flex;border:1px solid var(--divider-color);border-radius:8px;overflow:hidden}
+.seg button{flex:1;border:0;padding:8px 4px;background:var(--card-background-color);color:var(--secondary-text-color);font:inherit;font-size:.8rem;cursor:pointer;border-right:1px solid var(--divider-color)}
+.seg button:last-child{border-right:0}.seg button.on{background:var(--fd-teal);color:#06231c;font-weight:600}
+.hint{font-size:.72rem;color:var(--secondary-text-color);margin-top:3px}
+.actions{display:flex;gap:8px;margin-top:14px}
+.btn{flex:1;border:0;border-radius:10px;padding:11px;font:inherit;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px}
+.btn.go{background:var(--fd-teal);color:#06231c}.btn.stop{background:var(--secondary-background-color);color:var(--primary-text-color)}
+.btn:disabled{opacity:.45;cursor:default}
+.ghost{background:none;border:1px solid var(--divider-color);color:var(--secondary-text-color);border-radius:8px;padding:7px 10px;font:inherit;font-size:.8rem;cursor:pointer}
+.row{display:flex;gap:8px;margin-top:8px}.row input{flex:1}
+details{margin-top:14px;border-top:1px solid var(--divider-color);padding-top:10px}
+summary{cursor:pointer;font-weight:600;font-size:.9rem;list-style:none;display:flex;align-items:center;gap:6px}
+summary::-webkit-details-marker{display:none}
+.keys{display:flex;justify-content:center;gap:12px;margin:12px 0 8px}
+.key{width:44px;height:44px;border-radius:10px;border:1px solid var(--divider-color);display:flex;align-items:center;justify-content:center;font-weight:600;font-size:.85rem}
+.key.hl{background:var(--fd-amber);border-color:var(--fd-amber);color:#3a2503}
+ol{list-style:none;margin:0;padding:0;counter-reset:s}
+li{counter-increment:s;display:flex;gap:10px;padding:9px 10px;border:1px solid var(--divider-color);border-radius:9px;margin-bottom:6px;cursor:pointer}
+li::before{content:counter(s,decimal-leading-zero);color:var(--fd-teal);font-weight:700;font-size:.85rem;min-width:22px}
+li.on{border-color:var(--fd-teal);background:rgba(37,201,164,.08)}
+.st{font-size:.85rem;font-weight:600}.sd{font-size:.75rem;color:var(--secondary-text-color);margin-top:2px}
+.toast{font-size:.78rem;color:var(--fd-teal);min-height:1.1em;margin-top:8px}.toast.err{color:var(--error-color)}
+.missing{padding:8px;color:var(--secondary-text-color)}
+</style><ha-card><div class="body"></div></ha-card>`;
+    this._root.addEventListener("click", (e) => this._click(e));
+    this._root.addEventListener("change", (e) => this._change(e));
+    this._tick = setInterval(() => this._updateTime(), 1000);
+  }
+
+  disconnectedCallback() { clearInterval(this._tick); this._tick = null; }
+  connectedCallback() { if (this._root && !this._tick) this._tick = setInterval(() => this._updateTime(), 1000); }
+
+  _render() {
+    const body = this._root.querySelector(".body");
+    const id = this._entityId();
+    const st = id && this._hass.states[id];
+    if (!st) { body.innerHTML = `<div class="missing">Integrazione FilaDryer S4 non trovata. Aggiungila da Impostazioni → Dispositivi e servizi.</div>`; return; }
+    const a = st.attributes, s = st.state, drying = s === "drying";
+    const mats = a.materials || {};
+    const steps = a.steps || [];
+    if (this._step >= steps.length) this._step = 0;
+    const cur = steps[this._step] || {};
+    const fl = (z) => (this._open && cur.zone === z ? "z flash" : "z");
+    const seg = (key, opts) => `<div class="seg" data-key="${key}">${opts.map(([v, t]) => `<button data-v="${v}" class="${String(a[key]) === v ? "on" : ""}" ${drying ? "disabled" : ""}>${t}</button>`).join("")}</div>`;
+    const presetSel = (a.presets || []).map((p) => `<option ${a.preset_values && JSON.stringify(a.preset_values[p]) === JSON.stringify(this._settings(a)) ? "selected" : ""}>${esc(p)}</option>`).join("");
+    body.innerHTML = `
+<div class="head"><ha-icon icon="mdi:printer-3d-nozzle-heat"></ha-icon><div class="title">${esc(this._config.title || "FilaDryer S4")}</div><span class="pill ${s}">${STATUS[s] || s}</span></div>
+<div class="lcd">
+  <div class="lt">
+    <div><div class="lab">SV</div><div class="val"><span class="${fl("sv")}">${a.temperature}<small>°${a.unit}</small></span></div></div>
+    <div class="mid"><div class="brand"><span class="${fl("led")}">SUNLU</span></div><div class="mat"><span class="${fl("mat")}">${esc(a.material_lcd)}</span></div></div>
+    <div style="text-align:right"><div class="lab">MO · RH</div><div class="val"><span class="${fl("mo")}">${a.mode}</span> · <span class="${fl("rh")}">${a.mode === "2" ? a.humidity : "--"}<small>%</small></span></div></div>
+  </div>
+  <div class="time"><span class="${fl("time")}"><span class="clock"></span></span></div>
+  <div class="bar"><i class="prog" style="width:0"></i></div>
+</div>
+<div class="grid">
+  <div><label>Materiale</label><select data-key="material" ${drying ? "disabled" : ""}>${Object.entries(mats).map(([k, m]) => `<option value="${k}" ${k === a.material ? "selected" : ""}>${esc(m.label)}</option>`).join("")}</select><div class="hint">Consigliato ${esc(a.material_note)}</div></div>
+  <div><label>Temperatura SV (35–70)</label><input type="number" min="35" max="70" data-key="temperature" value="${a.temperature}" ${drying ? "disabled" : ""}></div>
+  <div><label>Durata (ore)</label><input type="number" min="1" max="99" data-key="hours" value="${a.hours}" ${drying ? "disabled" : ""}></div>
+  <div><label>Modalità</label>${seg("mode", [["1", "MO1 tempo"], ["2", "MO2 umidità"]])}</div>
+  ${a.mode === "2" ? `<div><label>Umidità di riavvio (30–50%)</label><input type="number" min="30" max="50" data-key="humidity" value="${a.humidity}" ${drying ? "disabled" : ""}></div>` : ""}
+  <div><label>Unità</label>${seg("unit", [["C", "°C"], ["F", "°F"]])}</div>
+  <div style="grid-column:1/-1"><label>LED</label>${seg("led", Object.entries(LED))}</div>
+</div>
+<div class="actions">
+  <button class="btn go" data-act="start" ${drying ? "disabled" : ""}><ha-icon icon="mdi:play"></ha-icon>Avvia countdown</button>
+  <button class="btn stop" data-act="stop" ${s === "idle" ? "disabled" : ""}><ha-icon icon="mdi:stop"></ha-icon>${s === "done" ? "Azzera" : "Ferma"}</button>
+</div>
+<details class="pres"><summary><ha-icon icon="mdi:bookmark-multiple"></ha-icon>Preset (${(a.presets || []).length})</summary>
+  <div class="row"><select class="psel"><option value="">— seleziona —</option>${presetSel}</select><button class="ghost" data-act="load">Carica</button><button class="ghost" data-act="del">Elimina</button></div>
+  <div class="row"><input class="pname" maxlength="80" placeholder="Nome nuovo preset (es. PETG notte)"><button class="ghost" data-act="save">Salva</button></div>
+</details>
+<details class="seq" ${this._open ? "open" : ""}><summary><ha-icon icon="mdi:gesture-tap-button"></ha-icon>Tasti da premere sul dryer</summary>
+  <div class="keys">${[["pwr", "⏻"], ["set", "SET"], ["up", "▲"], ["down", "▼"]].map(([k, t]) => `<div class="key ${(cur.keys || []).includes(k) ? "hl" : ""}">${t}</div>`).join("")}</div>
+  <ol>${steps.map((x, i) => `<li data-step="${i}" class="${i === this._step ? "on" : ""}"><div><div class="st">${esc(x.text)}</div><div class="sd">${esc(x.detail)}</div></div></li>`).join("")}</ol>
+</details>
+<div class="toast"></div>`;
+    this._attrs = a; this._state = s;
+    const pres = body.querySelector("details.pres"), seq = body.querySelector("details.seq");
+    pres.open = !!this._presOpen;
+    pres.addEventListener("toggle", () => (this._presOpen = pres.open));
+    seq.addEventListener("toggle", () => { if (this._open !== seq.open) { this._open = seq.open; this._render(); } });
+    this._updateTime();
+  }
+
+  _settings(a) {
+    const o = {};
+    ["material", "temperature", "unit", "hours", "mode", "humidity", "led"].forEach((k) => (o[k] = a[k]));
+    return o;
+  }
+
+  _updateTime() {
+    if (!this._attrs || !this._root) return;
+    const clock = this._root.querySelector(".clock"), prog = this._root.querySelector(".prog");
+    if (!clock) return;
+    const a = this._attrs;
+    if (this._state === "drying" && a.ends) {
+      const left = Math.max(0, Math.round((new Date(a.ends) - Date.now()) / 1000));
+      clock.textContent = hms(left);
+      prog.style.width = `${Math.min(100, 100 - (left / a.duration) * 100)}%`;
+    } else if (this._state === "done") {
+      clock.textContent = "FINE"; prog.style.width = "100%";
+    } else {
+      clock.textContent = `${pad(a.hours)}:00:00`; prog.style.width = "0";
+    }
+  }
+
+  _click(e) {
+    const b = e.composedPath().find((n) => n.dataset && (n.dataset.act || n.dataset.v !== undefined || n.dataset.step !== undefined));
+    if (!b) return;
+    if (b.dataset.step !== undefined) { this._step = +b.dataset.step; this._open = true; this._render(); return; }
+    if (b.dataset.v !== undefined && b.parentElement?.dataset.key) { if (!b.disabled) this._call("set", { [b.parentElement.dataset.key]: b.dataset.v }); return; }
+    const act = b.dataset.act, psel = this._root.querySelector(".psel"), pname = this._root.querySelector(".pname");
+    if (act === "start") this._call("start");
+    else if (act === "stop") this._call("stop");
+    else if (act === "load") psel.value ? this._call("load_preset", { name: psel.value }) : this._toast("Scegli un preset.", true);
+    else if (act === "del") {
+      if (!psel.value) return this._toast("Scegli il preset da eliminare.", true);
+      if (confirm(`Eliminare il preset «${psel.value}»?`)) this._call("delete_preset", { name: psel.value });
+    } else if (act === "save") {
+      const n = pname.value.trim();
+      if (!n) return this._toast("Dai un nome al preset.", true);
+      this._call("save_preset", { name: n }); this._toast(`Preset «${n}» salvato.`);
+    }
+  }
+
+  _change(e) {
+    const el = e.composedPath()[0];
+    if (el.classList?.contains("psel") || el.classList?.contains("pname")) return;
+    const key = el.dataset?.key;
+    if (!key) return;
+    const v = el.tagName === "INPUT" ? parseInt(el.value, 10) : el.value;
+    if (el.tagName === "INPUT" && (isNaN(v) || v < +el.min || v > +el.max)) { this._toast(`Valore fuori range (${el.min}–${el.max}).`, true); el.value = this._attrs[key]; return; }
+    this._call("set", { [key]: v });
+  }
+}
+
+if (!customElements.get("filadryer-card")) {
+  customElements.define("filadryer-card", FilaDryerCard);
+  window.customCards = window.customCards || [];
+  window.customCards.push({ type: "filadryer-card", name: "FilaDryer S4", description: "Preset, tasti da premere e countdown per il SUNLU FilaDryer S4", preview: true });
+}
+})();

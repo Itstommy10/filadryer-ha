@@ -1,0 +1,175 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "FilaDryer S4",
+        "description": "Servizio di notifica da usare quando l'asciugatura finisce (facoltativo).",
+        "data": {
+          "notify_service": "Servizio di notifica"
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "Già configurato",
+      "single_instance_allowed": "Già configurato"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "FilaDryer S4",
+        "data": {
+          "notify_service": "Servizio di notifica"
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "status": {
+        "name": "Stato",
+        "state": {
+          "idle": "Inattivo",
+          "drying": "In asciugatura",
+          "done": "Completata"
+        }
+      },
+      "end": {
+        "name": "Fine asciugatura"
+      }
+    },
+    "select": {
+      "material": {
+        "name": "Materiale"
+      },
+      "mode": {
+        "name": "Modalità",
+        "state": {
+          "1": "MO1 a tempo",
+          "2": "MO2 a umidità"
+        }
+      },
+      "unit": {
+        "name": "Unità",
+        "state": {
+          "C": "°C",
+          "F": "°F"
+        }
+      },
+      "led": {
+        "name": "LED",
+        "state": {
+          "flow": "Scorrevole",
+          "on": "Sempre acceso",
+          "off": "Spento"
+        }
+      },
+      "preset": {
+        "name": "Preset"
+      }
+    },
+    "number": {
+      "temperature": {
+        "name": "Temperatura"
+      },
+      "hours": {
+        "name": "Durata"
+      },
+      "humidity": {
+        "name": "Umidità di riavvio"
+      }
+    },
+    "button": {
+      "start": {
+        "name": "Avvia asciugatura"
+      },
+      "stop": {
+        "name": "Ferma asciugatura"
+      }
+    }
+  },
+  "services": {
+    "set": {
+      "name": "Imposta",
+      "description": "Cambia le impostazioni di asciugatura.",
+      "fields": {
+        "material": {
+          "name": "Materiale",
+          "description": "Tipo di filamento."
+        },
+        "temperature": {
+          "name": "Temperatura",
+          "description": "Temperatura target SV (35–70)."
+        },
+        "unit": {
+          "name": "Unità",
+          "description": "C o F."
+        },
+        "hours": {
+          "name": "Ore",
+          "description": "Durata 1–99 h."
+        },
+        "mode": {
+          "name": "Modalità",
+          "description": "1 = tempo, 2 = umidità."
+        },
+        "humidity": {
+          "name": "Umidità",
+          "description": "Soglia di riavvio MO2 (30–50%)."
+        },
+        "led": {
+          "name": "LED",
+          "description": "flow, on, off."
+        }
+      }
+    },
+    "start": {
+      "name": "Avvia asciugatura",
+      "description": "Avvia il countdown, facoltativamente da un preset.",
+      "fields": {
+        "hours": {
+          "name": "Ore",
+          "description": "Sovrascrive la durata."
+        },
+        "preset": {
+          "name": "Preset",
+          "description": "Nome del preset da caricare prima."
+        }
+      }
+    },
+    "stop": {
+      "name": "Ferma asciugatura",
+      "description": "Annulla il countdown."
+    },
+    "save_preset": {
+      "name": "Salva preset",
+      "description": "Salva le impostazioni correnti come preset.",
+      "fields": {
+        "name": {
+          "name": "Nome",
+          "description": "Nome del preset."
+        }
+      }
+    },
+    "load_preset": {
+      "name": "Carica preset",
+      "description": "Carica un preset salvato.",
+      "fields": {
+        "name": {
+          "name": "Nome",
+          "description": "Nome del preset."
+        }
+      }
+    },
+    "delete_preset": {
+      "name": "Elimina preset",
+      "description": "Elimina un preset.",
+      "fields": {
+        "name": {
+          "name": "Nome",
+          "description": "Nome del preset."
+        }
+      }
+    }
+  }
+}

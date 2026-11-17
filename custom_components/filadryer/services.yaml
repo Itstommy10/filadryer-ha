@@ -1,0 +1,54 @@
+set:
+  fields:
+    material:
+      selector:
+        select:
+          options: [PLA, WOOD, PETG, PVB, ABS, HIPS, PVA, ASA, TPU, PMMA, PAPC]
+    temperature:
+      selector:
+        number: {min: 35, max: 70, unit_of_measurement: "°"}
+    unit:
+      selector:
+        select:
+          options: [C, F]
+    hours:
+      selector:
+        number: {min: 1, max: 99, unit_of_measurement: h}
+    mode:
+      selector:
+        select:
+          options: ["1", "2"]
+    humidity:
+      selector:
+        number: {min: 30, max: 50, unit_of_measurement: "%"}
+    led:
+      selector:
+        select:
+          options: [flow, "on", "off"]
+start:
+  fields:
+    hours:
+      selector:
+        number: {min: 1, max: 99, unit_of_measurement: h}
+    preset:
+      selector:
+        text:
+stop:
+save_preset:
+  fields:
+    name:
+      required: true
+      selector:
+        text:
+load_preset:
+  fields:
+    name:
+      required: true
+      selector:
+        text:
+delete_preset:
+  fields:
+    name:
+      required: true
+      selector:
+        text:
