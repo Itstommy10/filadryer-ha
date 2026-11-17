@@ -136,6 +136,32 @@ li.on{border-color:var(--fd-teal);background:rgba(37,201,164,.08)}
 .mchip{height:32px;padding:0 12px;border-radius:16px;border:0;cursor:pointer;font:inherit;font-size:.8rem;background:var(--secondary-background-color,rgba(127,127,127,.12));color:var(--secondary-text-color)}
 .mchip.on{background:color-mix(in srgb,var(--fd-teal) 22%,transparent);color:var(--fd-teal);font-weight:600}.mchip:disabled{opacity:.5;cursor:default}
 .mquick{flex:none}
+.mpanel{display:grid;grid-template-columns:1fr;gap:16px;padding-top:10px}
+.mh .mpanel{grid-template-columns:minmax(280px,340px) minmax(320px,1fr) minmax(260px,320px);gap:20px;align-items:start}
+@container (max-width:1000px){.mh .mpanel{grid-template-columns:minmax(260px,320px) 1fr}.mh .mside{grid-column:1/-1}}
+@container (max-width:620px){.mh .mpanel{grid-template-columns:1fr}}
+.mcol{display:flex;flex-direction:column;gap:10px;min-width:0}
+.mh .mset,.mh .mside{padding-left:20px;border-left:1px solid var(--divider-color)}
+@container (max-width:1000px){.mh .mside{padding-left:0;border-left:0;border-top:1px solid var(--divider-color);padding-top:14px}}
+@container (max-width:620px){.mh .mset{padding-left:0;border-left:0}}
+.mh3{font-size:.72rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--secondary-text-color)}
+.mfields{display:grid;grid-template-columns:1fr 1fr;gap:10px 12px}
+.mf.span2{grid-column:1/-1}
+.mf label{display:block;font-size:.72rem;margin-bottom:4px;color:var(--secondary-text-color)}
+.mseg{display:flex;gap:3px;padding:3px;border-radius:12px;background:var(--secondary-background-color,rgba(127,127,127,.12));height:36px;box-sizing:border-box}
+.mseg button{flex:1;min-width:0;border:0;border-radius:9px;background:none;color:var(--secondary-text-color);font:inherit;font-size:.8rem;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 6px}
+.mseg button.on{background:var(--card-background-color);color:var(--fd-teal);font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,.25)}
+.mseg button:disabled{cursor:default;opacity:.6}
+.mact2,.mact4{display:grid;gap:8px}
+.mact2{grid-template-columns:1fr auto}.mact2 .wide:only-child{grid-column:1/-1}
+.mact4{grid-template-columns:1.4fr 1fr 1fr 1fr}
+.mpill{justify-content:center}
+.minfo{font-size:.8rem;color:var(--secondary-text-color)}.minfo b{color:var(--primary-text-color)}
+.mempty{font-size:.8rem;color:var(--secondary-text-color)}
+.mside details{border-top:1px solid var(--divider-color);padding-top:8px;margin-top:2px}
+.mside summary{font-size:.85rem;font-weight:500}
+.mdisp .mlcd{margin:0}
+
 .mact{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
 .mpill{display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 14px;border-radius:18px;border:0;cursor:pointer;font:inherit;font-size:.85rem;font-weight:500;background:var(--secondary-background-color,rgba(127,127,127,.12));color:var(--primary-text-color);--mdc-icon-size:18px}
 .mpill.go{background:color-mix(in srgb,var(--fd-teal) 22%,transparent);color:var(--fd-teal)}
@@ -245,40 +271,55 @@ ${this._horiz ? `<div class="note">${a.ends && s === "drying" ? "Fine prevista a
   <div class="time"><span class="${fl("time")}"><span class="lcdclock"></span></span></div>
 </div>` : "";
     const icon = drying ? "mdi:stop" : s === "done" ? "mdi:check" : "mdi:play";
+    const seg = (key, opts) => `<div class="mseg" data-key="${key}">${opts.map(([v, t]) => `<button data-v="${v}" class="${String(a[key]) === v ? "on" : ""}" ${drying ? "disabled" : ""}>${t}</button>`).join("")}</div>`;
+    const hhmm = (d) => new Date(d).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    const actions = drying
+      ? `<div class="mact4"><button class="mpill stop" data-act="stop"><ha-icon icon="mdi:stop"></ha-icon>Ferma</button><button class="mpill" data-act="ext" data-min="-30">−30′</button><button class="mpill" data-act="ext" data-min="30">+30′</button><button class="mpill" data-act="ext" data-min="60">+1 h</button></div>`
+      : `<div class="mact2"><button class="mpill go wide" data-act="start"><ha-icon icon="mdi:play"></ha-icon>Avvia countdown</button>${s === "done" ? `<button class="mpill" data-act="stop"><ha-icon icon="mdi:restore"></ha-icon>Azzera</button>` : ""}</div>`;
+    const info = drying && a.ends ? `Fine alle <b>${hhmm(a.ends)}</b>` : s === "done" && a.last_done ? `Finita alle <b>${hhmm(a.last_done)}</b>` : `${esc(a.material_label)} · consigliato ${esc(a.material_note)}`;
+    const presets = a.presets || [];
+    const presetChips = presets.length
+      ? `<div class="mchips">${presets.map((p) => `<button class="mchip ${a.preset_values && JSON.stringify(a.preset_values[p]) === JSON.stringify(this._settings(a)) ? "on" : ""}" data-act="pload" data-name="${esc(p)}" ${drying ? "disabled" : ""}>${esc(p)}</button>`).join("")}</div>`
+      : `<div class="mempty">Nessun preset salvato</div>`;
     body.innerHTML = `
 <div class="m ${this._horiz ? "mh" : ""}">
  <div class="mrow ${this._expandable ? "tog" : ""}" ${this._expandable ? 'data-act="toggle"' : ""}>
   <div class="mic" style="--c:${col}"><ha-icon icon="mdi:printer-3d-nozzle-heat"></ha-icon></div>
   <div class="mtx"><div class="mpri">${esc(this._config.title || "FilaDryer S4")}</div><div class="msec">${sec}</div></div>
-  <button class="mbtn big ${drying ? "stop" : "go"}" data-act="${act}"><ha-icon icon="${icon}"></ha-icon></button>
+  ${this._expanded ? `<span class="pill ${s}">${STATUS[s] || s}</span>` : `<button class="mbtn big ${drying ? "stop" : "go"}" data-act="${act}"><ha-icon icon="${icon}"></ha-icon></button>`}
   ${this._expandable ? `<ha-icon class="chev ${this._expanded ? "up" : ""}" icon="mdi:chevron-down"></ha-icon>` : ""}
  </div>
  <div class="mbar"><i class="prog" style="width:0"></i></div>
- <div class="${this._expanded ? "" : "hide "}mbody">
-  <div class="mmain ${showLcd ? "" : "nolcd"}">${lcd}<div class="mgrid">
-   <div class="mf"><label>Materiale</label><div class="msel"><ha-icon icon="mdi:printer-3d-nozzle"></ha-icon><select data-key="material" ${drying ? "disabled" : ""}>${Object.entries(mats).map(([k, m]) => `<option value="${k}" ${k === a.material ? "selected" : ""}>${esc(m.label)}</option>`).join("")}</select></div></div>
-   <div class="mf"><label>Temperatura</label>${step("temperature", "°" + a.unit, 35, 70)}</div>
-   <div class="mf"><label>Durata</label>${step("hours", " h", 1, 99)}</div>
-   ${a.mode === "2" ? `<div class="mf"><label>Umidità riavvio</label>${step("humidity", "%", 30, 50)}</div>` : ""}
-   <div class="mf"><label>Modalità</label>${chip("mode", [["1", "MO1 tempo"], ["2", "MO2 umidità"]])}</div>
-   <div class="mf"><label>Unità</label>${chip("unit", [["C", "°C"], ["F", "°F"]])}</div>
-   <div class="mf wide"><label>LED</label>${chip("led", Object.entries(LED))}</div>
-  </div></div>
-  <div class="mact">
-   ${drying ? `<button class="mpill" data-act="ext" data-min="-30"><ha-icon icon="mdi:timer-minus-outline"></ha-icon>−30 min</button><button class="mpill" data-act="ext" data-min="30"><ha-icon icon="mdi:timer-plus-outline"></ha-icon>+30 min</button><button class="mpill" data-act="ext" data-min="60">+1 h</button>` : ""}
-   ${!drying ? `<button class="mpill go" data-act="start"><ha-icon icon="mdi:play"></ha-icon>Avvia countdown</button>` : ""}
-   ${s !== "idle" ? `<button class="mpill stop" data-act="stop"><ha-icon icon="${drying ? "mdi:stop" : "mdi:restore"}"></ha-icon>${drying ? "Ferma" : "Azzera"}</button>` : ""}
-   ${a.ends && drying ? `<span class="mend">Fine alle ${new Date(a.ends).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>` : a.last_done && s === "done" ? `<span class="mend">Finita alle ${new Date(a.last_done).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>` : ""}
-  </div>
-  ${(a.presets || []).length ? `<div class="mf"><label>Preset rapidi</label><div class="mchips">${a.presets.map((p) => `<button class="mchip pchip ${a.preset_values && JSON.stringify(a.preset_values[p]) === JSON.stringify(this._settings(a)) ? "on" : ""}" data-act="pload" data-name="${esc(p)}" ${drying ? "disabled" : ""}>${esc(p)}</button>`).join("")}</div></div>` : ""}
-  <details class="pres"><summary><ha-icon icon="mdi:bookmark-multiple"></ha-icon>Gestisci preset (${(a.presets || []).length})</summary>
-   <div class="row"><select class="psel"><option value="">— seleziona —</option>${presetSel}</select><button class="ghost" data-act="load">Carica</button><button class="ghost" data-act="del">Elimina</button></div>
-   <div class="row"><input class="pname" maxlength="80" placeholder="Nome nuovo preset"><button class="ghost" data-act="save">Salva</button></div>
-  </details>
-  <details class="seq" ${this._open ? "open" : ""}><summary><ha-icon icon="mdi:gesture-tap-button"></ha-icon>Tasti da premere</summary>
-   <div class="keys">${[["pwr", "⏻"], ["set", "SET"], ["up", "▲"], ["down", "▼"]].map(([k, t]) => `<div class="key ${(cur.keys || []).includes(k) ? "hl" : ""}">${t}</div>`).join("")}</div>
-   <ol>${steps.map((x, i) => `<li data-step="${i}" class="${i === this._step ? "on" : ""}"><div><div class="st">${esc(x.text)}</div><div class="sd">${esc(x.detail)}</div></div></li>`).join("")}</ol>
-  </details>
+ <div class="${this._expanded ? "" : "hide "}mpanel">
+  <section class="mcol mdisp">
+   ${lcd}
+   ${actions}
+   <div class="minfo">${info}</div>
+  </section>
+  <section class="mcol mset">
+   <div class="mh3">Impostazioni</div>
+   <div class="mfields">
+    <div class="mf span2"><label>Materiale</label><div class="msel"><ha-icon icon="mdi:printer-3d-nozzle"></ha-icon><select data-key="material" ${drying ? "disabled" : ""}>${Object.entries(mats).map(([k, m]) => `<option value="${k}" ${k === a.material ? "selected" : ""}>${esc(m.label)}</option>`).join("")}</select></div></div>
+    <div class="mf"><label>Temperatura</label>${step("temperature", "°" + a.unit, 35, 70)}</div>
+    <div class="mf"><label>Durata</label>${step("hours", " h", 1, 99)}</div>
+    <div class="mf span2"><label>Modalità</label>${seg("mode", [["1", "MO1 · a tempo"], ["2", "MO2 · a umidità"]])}</div>
+    ${a.mode === "2" ? `<div class="mf span2"><label>Umidità di riavvio</label>${step("humidity", "%", 30, 50)}</div>` : ""}
+    <div class="mf"><label>Unità</label>${seg("unit", [["C", "°C"], ["F", "°F"]])}</div>
+    <div class="mf"><label>LED</label>${seg("led", [["flow", "Scorre"], ["on", "Acceso"], ["off", "Spento"]])}</div>
+   </div>
+  </section>
+  <section class="mcol mside">
+   <div class="mh3">Preset</div>
+   ${presetChips}
+   <details class="pres"><summary>Salva o elimina preset</summary>
+    <div class="row"><input class="pname" maxlength="80" placeholder="Nome (es. PETG notte)"><button class="ghost" data-act="save">Salva</button></div>
+    <div class="row"><select class="psel"><option value="">— preset —</option>${presetSel}</select><button class="ghost" data-act="del">Elimina</button></div>
+   </details>
+   <details class="seq" ${this._open ? "open" : ""}><summary>Tasti da premere sul dryer</summary>
+    <div class="keys">${[["pwr", "⏻"], ["set", "SET"], ["up", "▲"], ["down", "▼"]].map(([k, t]) => `<div class="key ${(cur.keys || []).includes(k) ? "hl" : ""}">${t}</div>`).join("")}</div>
+    <ol>${steps.map((x, i) => `<li data-step="${i}" class="${i === this._step ? "on" : ""}"><div><div class="st">${esc(x.text)}</div><div class="sd">${esc(x.detail)}</div></div></li>`).join("")}</ol>
+   </details>
+  </section>
  </div>
 </div>
 <div class="toast"></div>`;
