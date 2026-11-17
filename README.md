@@ -25,6 +25,7 @@ expandable: true      # tocca l'intestazione per aprire/chiudere (predefinito co
 expanded: false       # stato iniziale
 # title: FilaDryer S4
 # show_steps: true    # sequenza tasti aperta
+# show_display: true  # display LCD anche nello stile mushroom (predefinito)
 ```
 
 | Combinazione | Aspetto |
@@ -53,6 +54,7 @@ La card viene caricata automaticamente dall'integrazione: non serve aggiungere r
 - `filadryer.set` – cambia una o più impostazioni
 - `filadryer.start` – avvia il countdown (facoltativi `hours`, `preset`)
 - `filadryer.stop` – annulla il countdown
+- `filadryer.extend` – allunga o accorcia il ciclo in corso (`minutes`, anche negativi)
 - `filadryer.save_preset` / `load_preset` / `delete_preset` – gestione preset (`name`)
 
 ## Automazioni

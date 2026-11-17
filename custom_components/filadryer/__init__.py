@@ -77,6 +77,13 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     hass.services.async_register(DOMAIN, "set", h_set, SET_SCHEMA)
     hass.services.async_register(DOMAIN, "start", h_start, START_SCHEMA)
     hass.services.async_register(DOMAIN, "stop", h_stop)
+
+    async def h_extend(call: ServiceCall) -> None:
+        await _dryer(hass).async_extend(call.data["minutes"])
+
+    hass.services.async_register(DOMAIN, "extend", h_extend, vol.Schema({
+        vol.Required("minutes"): vol.All(vol.Coerce(int), vol.Range(-5940, 5940)),
+    }))
     hass.services.async_register(DOMAIN, "save_preset", h_save, NAME_SCHEMA)
     hass.services.async_register(DOMAIN, "load_preset", h_load, NAME_SCHEMA)
     hass.services.async_register(DOMAIN, "delete_preset", h_delete, NAME_SCHEMA)

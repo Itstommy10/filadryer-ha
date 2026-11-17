@@ -33,6 +33,12 @@ start:
     preset:
       selector:
         text:
+extend:
+  fields:
+    minutes:
+      required: true
+      selector:
+        number: {min: -600, max: 600, step: 15, unit_of_measurement: min}
 stop:
 save_preset:
   fields:

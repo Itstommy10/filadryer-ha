@@ -170,6 +170,16 @@
           "description": "Nome del preset."
         }
       }
+    },
+    "extend": {
+      "name": "Allunga asciugatura",
+      "description": "Aggiunge o toglie minuti al ciclo in corso.",
+      "fields": {
+        "minutes": {
+          "name": "Minuti",
+          "description": "Positivi per allungare, negativi per accorciare."
+        }
+      }
     }
   }
 }

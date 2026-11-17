@@ -27,6 +27,7 @@ class FilaDryerCard extends HTMLElement {
       { name: "layout", selector: { select: { mode: "dropdown", options: [{ value: "vertical", label: "Verticale" }, { value: "horizontal", label: "Orizzontale (larghezza piena)" }] } } },
       { name: "style", selector: { select: { mode: "dropdown", options: [{ value: "classic", label: "Classico (display)" }, { value: "mushroom", label: "Mushroom (compatto)" }] } } },
       { name: "expandable", selector: { boolean: {} } },
+      { name: "show_display", selector: { boolean: {} } },
       { name: "expanded", selector: { boolean: {} } },
       { name: "title", selector: { text: {} } },
       { name: "show_steps", selector: { boolean: {} } },
@@ -135,6 +136,17 @@ li.on{border-color:var(--fd-teal);background:rgba(37,201,164,.08)}
 .mchip{height:32px;padding:0 12px;border-radius:16px;border:0;cursor:pointer;font:inherit;font-size:.8rem;background:var(--secondary-background-color,rgba(127,127,127,.12));color:var(--secondary-text-color)}
 .mchip.on{background:color-mix(in srgb,var(--fd-teal) 22%,transparent);color:var(--fd-teal);font-weight:600}.mchip:disabled{opacity:.5;cursor:default}
 .mquick{flex:none}
+.mact{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.mpill{display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 14px;border-radius:18px;border:0;cursor:pointer;font:inherit;font-size:.85rem;font-weight:500;background:var(--secondary-background-color,rgba(127,127,127,.12));color:var(--primary-text-color);--mdc-icon-size:18px}
+.mpill.go{background:color-mix(in srgb,var(--fd-teal) 22%,transparent);color:var(--fd-teal)}
+.mpill.stop{background:color-mix(in srgb,var(--fd-amber) 22%,transparent);color:#c98a1a}
+.mend{font-size:.8rem;color:var(--secondary-text-color);margin-left:auto}
+.mmain{display:flex;flex-direction:column;gap:12px}
+.mh .mmain:not(.nolcd){display:grid;grid-template-columns:minmax(260px,340px) 1fr;gap:16px;align-items:start}
+@container (max-width:640px){.mh .mmain:not(.nolcd){grid-template-columns:1fr}}
+.mlcd{padding:12px 14px 10px}.mlcd .val{font-size:1.35rem}.mlcd .time{font-size:1.5rem;margin-top:6px}
+.mf.wide{grid-column:span 2}.mf.wide .mchips{flex-wrap:nowrap}
+@container (max-width:420px){.mf.wide{grid-column:auto}.mf.wide .mchips{flex-wrap:wrap}}
 .m details{border-top:1px solid var(--divider-color)}
 .missing{padding:8px;color:var(--secondary-text-color)}
 </style><ha-card><div class="body"></div></ha-card>`;
@@ -222,28 +234,44 @@ ${this._horiz ? `<div class="note">${a.ends && s === "drying" ? "Fine prevista a
     const presetSel = (a.presets || []).map((p) => `<option ${a.preset_values && JSON.stringify(a.preset_values[p]) === JSON.stringify(this._settings(a)) ? "selected" : ""}>${esc(p)}</option>`).join("");
     const sec = drying ? `<span class="clock"></span> · ${esc(a.material_lcd)} ${a.temperature}°${a.unit}` : s === "done" ? `Completata · ${esc(a.material_lcd)}` : `${esc(a.material_lcd)} · ${a.temperature}°${a.unit} · ${a.hours} h · MO${a.mode}`;
     const act = drying || s === "done" ? "stop" : "start";
+    const fl = (z) => (this._open && cur.zone === z ? "z flash" : "z");
+    const showLcd = this._config.show_display ?? true;
+    const lcd = showLcd ? `<div class="lcd mlcd">
+  <div class="lt">
+    <div><div class="lab">SV</div><div class="val"><span class="${fl("sv")}">${a.temperature}<small>°${a.unit}</small></span></div></div>
+    <div class="mid"><div class="brand"><span class="${fl("led")}">SUNLU</span></div><div class="mat"><span class="${fl("mat")}">${esc(a.material_lcd)}</span></div></div>
+    <div style="text-align:right"><div class="lab">MO · RH</div><div class="val"><span class="${fl("mo")}">${a.mode}</span> · <span class="${fl("rh")}">${a.mode === "2" ? a.humidity : "--"}<small>%</small></span></div></div>
+  </div>
+  <div class="time"><span class="${fl("time")}"><span class="lcdclock"></span></span></div>
+</div>` : "";
     const icon = drying ? "mdi:stop" : s === "done" ? "mdi:check" : "mdi:play";
     body.innerHTML = `
 <div class="m ${this._horiz ? "mh" : ""}">
  <div class="mrow ${this._expandable ? "tog" : ""}" ${this._expandable ? 'data-act="toggle"' : ""}>
   <div class="mic" style="--c:${col}"><ha-icon icon="mdi:printer-3d-nozzle-heat"></ha-icon></div>
   <div class="mtx"><div class="mpri">${esc(this._config.title || "FilaDryer S4")}</div><div class="msec">${sec}</div></div>
-  ${this._horiz ? `<div class="mquick">${chip("mode", [["1", "MO1"], ["2", "MO2"]])}</div>` : ""}
   <button class="mbtn big ${drying ? "stop" : "go"}" data-act="${act}"><ha-icon icon="${icon}"></ha-icon></button>
   ${this._expandable ? `<ha-icon class="chev ${this._expanded ? "up" : ""}" icon="mdi:chevron-down"></ha-icon>` : ""}
  </div>
  <div class="mbar"><i class="prog" style="width:0"></i></div>
  <div class="${this._expanded ? "" : "hide "}mbody">
-  <div class="mgrid">
+  <div class="mmain ${showLcd ? "" : "nolcd"}">${lcd}<div class="mgrid">
    <div class="mf"><label>Materiale</label><div class="msel"><ha-icon icon="mdi:printer-3d-nozzle"></ha-icon><select data-key="material" ${drying ? "disabled" : ""}>${Object.entries(mats).map(([k, m]) => `<option value="${k}" ${k === a.material ? "selected" : ""}>${esc(m.label)}</option>`).join("")}</select></div></div>
    <div class="mf"><label>Temperatura</label>${step("temperature", "°" + a.unit, 35, 70)}</div>
    <div class="mf"><label>Durata</label>${step("hours", " h", 1, 99)}</div>
    ${a.mode === "2" ? `<div class="mf"><label>Umidità riavvio</label>${step("humidity", "%", 30, 50)}</div>` : ""}
-   ${this._horiz ? "" : `<div class="mf"><label>Modalità</label>${chip("mode", [["1", "MO1 tempo"], ["2", "MO2 umidità"]])}</div>`}
+   <div class="mf"><label>Modalità</label>${chip("mode", [["1", "MO1 tempo"], ["2", "MO2 umidità"]])}</div>
    <div class="mf"><label>Unità</label>${chip("unit", [["C", "°C"], ["F", "°F"]])}</div>
-   <div class="mf"><label>LED</label>${chip("led", Object.entries(LED))}</div>
+   <div class="mf wide"><label>LED</label>${chip("led", Object.entries(LED))}</div>
+  </div></div>
+  <div class="mact">
+   ${drying ? `<button class="mpill" data-act="ext" data-min="-30"><ha-icon icon="mdi:timer-minus-outline"></ha-icon>−30 min</button><button class="mpill" data-act="ext" data-min="30"><ha-icon icon="mdi:timer-plus-outline"></ha-icon>+30 min</button><button class="mpill" data-act="ext" data-min="60">+1 h</button>` : ""}
+   ${!drying ? `<button class="mpill go" data-act="start"><ha-icon icon="mdi:play"></ha-icon>Avvia countdown</button>` : ""}
+   ${s !== "idle" ? `<button class="mpill stop" data-act="stop"><ha-icon icon="${drying ? "mdi:stop" : "mdi:restore"}"></ha-icon>${drying ? "Ferma" : "Azzera"}</button>` : ""}
+   ${a.ends && drying ? `<span class="mend">Fine alle ${new Date(a.ends).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>` : a.last_done && s === "done" ? `<span class="mend">Finita alle ${new Date(a.last_done).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>` : ""}
   </div>
-  <details class="pres"><summary><ha-icon icon="mdi:bookmark-multiple"></ha-icon>Preset (${(a.presets || []).length})</summary>
+  ${(a.presets || []).length ? `<div class="mf"><label>Preset rapidi</label><div class="mchips">${a.presets.map((p) => `<button class="mchip pchip ${a.preset_values && JSON.stringify(a.preset_values[p]) === JSON.stringify(this._settings(a)) ? "on" : ""}" data-act="pload" data-name="${esc(p)}" ${drying ? "disabled" : ""}>${esc(p)}</button>`).join("")}</div></div>` : ""}
+  <details class="pres"><summary><ha-icon icon="mdi:bookmark-multiple"></ha-icon>Gestisci preset (${(a.presets || []).length})</summary>
    <div class="row"><select class="psel"><option value="">— seleziona —</option>${presetSel}</select><button class="ghost" data-act="load">Carica</button><button class="ghost" data-act="del">Elimina</button></div>
    <div class="row"><input class="pname" maxlength="80" placeholder="Nome nuovo preset"><button class="ghost" data-act="save">Salva</button></div>
   </details>
@@ -268,8 +296,13 @@ ${this._horiz ? `<div class="note">${a.ends && s === "drying" ? "Fine prevista a
   _updateTime() {
     if (!this._attrs || !this._root) return;
     const clock = this._root.querySelector(".clock"), prog = this._root.querySelector(".prog");
-    if (!clock || !prog) return;
     const a = this._attrs;
+    const lc = this._root.querySelector(".lcdclock");
+    if (lc) {
+      if (this._state === "drying" && a.ends) lc.textContent = hms(Math.max(0, Math.round((new Date(a.ends) - Date.now()) / 1000)));
+      else lc.textContent = this._state === "done" ? "FINE" : `${pad(a.hours)}:00:00`;
+    }
+    if (!clock || !prog) return;
     if (this._state === "drying" && a.ends) {
       const left = Math.max(0, Math.round((new Date(a.ends) - Date.now()) / 1000));
       clock.textContent = hms(left);
@@ -295,6 +328,8 @@ ${this._horiz ? `<div class="note">${a.ends && s === "drying" ? "Fine prevista a
       const k = b.dataset.k, v = +this._attrs[k] + (b.dataset.act === "inc" ? 1 : -1);
       this._call("set", { [k]: v }); return;
     }
+    if (b.dataset.act === "ext") { this._call("extend", { minutes: +b.dataset.min }); return; }
+    if (b.dataset.act === "pload") { if (!b.disabled) this._call("load_preset", { name: b.dataset.name }); return; }
     const act = b.dataset.act, psel = this._root.querySelector(".psel"), pname = this._root.querySelector(".pname");
     if (act === "start") this._call("start");
     else if (act === "stop") this._call("stop");

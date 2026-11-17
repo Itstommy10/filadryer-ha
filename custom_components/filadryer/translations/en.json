@@ -170,6 +170,16 @@
           "description": "Preset name."
         }
       }
+    },
+    "extend": {
+      "name": "Extend drying",
+      "description": "Add or remove minutes from the running cycle.",
+      "fields": {
+        "minutes": {
+          "name": "Minutes",
+          "description": "Positive to extend, negative to shorten."
+        }
+      }
     }
   }
 }

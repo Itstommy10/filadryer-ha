@@ -174,6 +174,20 @@ class FilaDryer:
         self._schedule()
         self._changed()
 
+    async def async_extend(self, minutes: int) -> None:
+        """Allunga o accorcia il ciclo in corso."""
+        if self.status != STATUS_DRYING or not self.ends:
+            raise HomeAssistantError("Nessuna asciugatura in corso")
+        new_end = self.ends + timedelta(minutes=minutes)
+        if new_end <= dt_util.utcnow() + timedelta(minutes=1):
+            raise HomeAssistantError("Il tempo rimasto sarebbe meno di un minuto")
+        self.ends = new_end
+        if self.run:
+            total = (self.ends - self.started).total_seconds() / 3600 if self.started else self.run["hours"]
+            self.run["hours"] = round(total, 2)
+        self._schedule()
+        self._changed()
+
     async def async_stop(self) -> None:
         if self._unsub:
             self._unsub()
