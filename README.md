@@ -19,10 +19,20 @@ Il FilaDryer S4 non ha Wi-Fi né Bluetooth: l'integrazione non lo comanda dirett
 
 ```yaml
 type: custom:filadryer-card
-layout: vertical      # oppure horizontal: larghezza piena, tre colonne
+style: mushroom       # mushroom (compatto, chip e +/-) oppure classic (replica del display)
+layout: horizontal    # horizontal (larghezza piena) oppure vertical
+expandable: true      # tocca l'intestazione per aprire/chiudere (predefinito con mushroom)
+expanded: false       # stato iniziale
 # title: FilaDryer S4
-# show_steps: true    # sequenza tasti aperta (predefinito solo in orizzontale)
+# show_steps: true    # sequenza tasti aperta
 ```
+
+| Combinazione | Aspetto |
+|---|---|
+| `style: classic`, `layout: vertical` | display LCD, impostazioni e tasti in colonna |
+| `style: classic`, `layout: horizontal` | tre colonne a larghezza piena |
+| `style: mushroom`, `layout: vertical` | riga compatta con icona, stato, tempo rimasto e pulsante play; si espande in chip e +/- |
+| `style: mushroom`, `layout: horizontal` | come sopra a larghezza piena, con il selettore MO1/MO2 sulla riga |
 
 Le opzioni si possono impostare anche dall'editor visuale della card.
 

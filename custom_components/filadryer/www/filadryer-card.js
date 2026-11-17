@@ -11,14 +11,23 @@ class FilaDryerCard extends HTMLElement {
     this._config = config || {};
     this._step = 0;
     this._horiz = String(this._config.layout || "vertical").toLowerCase().startsWith("h");
-    this._open = this._config.show_steps ?? this._horiz;
+    this._mush = String(this._config.style || "classic").toLowerCase() === "mushroom";
+    this._expandable = this._config.expandable ?? this._mush;
+    this._expanded = this._expandable ? !!this._config.expanded : true;
+    this._open = this._config.show_steps ?? (this._horiz && !this._mush);
   }
   static getStubConfig() { return {}; }
-  getCardSize() { return this._horiz ? 5 : 7; }
-  getGridOptions() { return this._horiz ? { columns: "full", min_columns: 12 } : { columns: 12, min_columns: 6 }; }
+  getCardSize() { return this._mush ? (this._expanded ? 4 : 1) : this._horiz ? 5 : 7; }
+  getGridOptions() {
+    if (this._horiz) return { columns: "full", min_columns: 12, rows: "auto" };
+    return { columns: this._mush ? 6 : 12, min_columns: this._mush ? 4 : 6, rows: "auto" };
+  }
   static getConfigForm() {
     return { schema: [
       { name: "layout", selector: { select: { mode: "dropdown", options: [{ value: "vertical", label: "Verticale" }, { value: "horizontal", label: "Orizzontale (larghezza piena)" }] } } },
+      { name: "style", selector: { select: { mode: "dropdown", options: [{ value: "classic", label: "Classico (display)" }, { value: "mushroom", label: "Mushroom (compatto)" }] } } },
+      { name: "expandable", selector: { boolean: {} } },
+      { name: "expanded", selector: { boolean: {} } },
       { name: "title", selector: { text: {} } },
       { name: "show_steps", selector: { boolean: {} } },
     ] };
@@ -103,6 +112,30 @@ li::before{content:counter(s,decimal-leading-zero);color:var(--fd-teal);font-wei
 li.on{border-color:var(--fd-teal);background:rgba(37,201,164,.08)}
 .st{font-size:.85rem;font-weight:600}.sd{font-size:.75rem;color:var(--secondary-text-color);margin-top:2px}
 .toast{font-size:.78rem;color:var(--fd-teal);min-height:1.1em;margin-top:8px}.toast.err{color:var(--error-color)}
+.hide{display:none!important}
+.tog{cursor:pointer;user-select:none}
+.chev{color:var(--secondary-text-color);transition:transform .2s}.chev.up{transform:rotate(180deg)}
+.mini{font-size:.85rem;color:var(--secondary-text-color)}.mini .bar{background:var(--divider-color);margin-top:8px}.mini .bar i{background:var(--fd-teal)}
+.m{display:flex;flex-direction:column;gap:10px}
+.mrow{display:flex;align-items:center;gap:12px;min-width:0}
+.mic{flex:none;width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:color-mix(in srgb,var(--c) 20%,transparent);color:var(--c);--mdc-icon-size:22px}
+.mtx{flex:1;min-width:0}.mpri{font-weight:600;font-size:.95rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.msec{font-size:.8rem;color:var(--secondary-text-color);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mbtn{flex:none;width:36px;height:36px;border-radius:12px;border:0;display:flex;align-items:center;justify-content:center;cursor:pointer;background:var(--secondary-background-color,rgba(127,127,127,.12));color:var(--primary-text-color);--mdc-icon-size:20px}
+.mbtn:disabled{opacity:.35;cursor:default}
+.mbtn.big{width:42px;height:42px}.mbtn.go{background:color-mix(in srgb,var(--fd-teal) 22%,transparent);color:var(--fd-teal)}.mbtn.stop{background:color-mix(in srgb,var(--fd-amber) 22%,transparent);color:#c98a1a}
+.mbar{height:4px;border-radius:2px;background:var(--divider-color);overflow:hidden}.mbar i{display:block;height:100%;background:var(--fd-amber);transition:width .5s}
+.mgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.mf label{font-size:.72rem;margin-bottom:4px}
+.msel{display:flex;align-items:center;gap:6px;height:36px;padding:0 10px;border-radius:12px;background:var(--secondary-background-color,rgba(127,127,127,.12));--mdc-icon-size:18px;color:var(--secondary-text-color)}
+.msel select{border:0;background:none;padding:0;height:100%;color:var(--primary-text-color);flex:1;min-width:0}
+.mstep{display:flex;align-items:center;justify-content:space-between;height:36px;border-radius:12px;background:var(--secondary-background-color,rgba(127,127,127,.12))}
+.mstep .mbtn{background:none;width:34px;height:34px}.mval{font-weight:600;font-size:.95rem}.mval small{font-weight:400;font-size:.75rem;color:var(--secondary-text-color)}
+.mchips{display:flex;gap:6px;flex-wrap:wrap}
+.mchip{height:32px;padding:0 12px;border-radius:16px;border:0;cursor:pointer;font:inherit;font-size:.8rem;background:var(--secondary-background-color,rgba(127,127,127,.12));color:var(--secondary-text-color)}
+.mchip.on{background:color-mix(in srgb,var(--fd-teal) 22%,transparent);color:var(--fd-teal);font-weight:600}.mchip:disabled{opacity:.5;cursor:default}
+.mquick{flex:none}
+.m details{border-top:1px solid var(--divider-color)}
 .missing{padding:8px;color:var(--secondary-text-color)}
 </style><ha-card><div class="body"></div></ha-card>`;
     this._root.addEventListener("click", (e) => this._click(e));
@@ -119,6 +152,7 @@ li.on{border-color:var(--fd-teal);background:rgba(37,201,164,.08)}
     const st = id && this._hass.states[id];
     if (!st) { body.innerHTML = `<div class="missing">Integrazione FilaDryer S4 non trovata. Aggiungila da Impostazioni → Dispositivi e servizi.</div>`; return; }
     const a = st.attributes, s = st.state, drying = s === "drying";
+    if (this._mush) return this._renderMushroom(body, a, s);
     const mats = a.materials || {};
     const steps = a.steps || [];
     if (this._step >= steps.length) this._step = 0;
@@ -127,8 +161,9 @@ li.on{border-color:var(--fd-teal);background:rgba(37,201,164,.08)}
     const seg = (key, opts) => `<div class="seg" data-key="${key}">${opts.map(([v, t]) => `<button data-v="${v}" class="${String(a[key]) === v ? "on" : ""}" ${drying ? "disabled" : ""}>${t}</button>`).join("")}</div>`;
     const presetSel = (a.presets || []).map((p) => `<option ${a.preset_values && JSON.stringify(a.preset_values[p]) === JSON.stringify(this._settings(a)) ? "selected" : ""}>${esc(p)}</option>`).join("");
     body.innerHTML = `
-<div class="head"><ha-icon icon="mdi:printer-3d-nozzle-heat"></ha-icon><div class="title">${esc(this._config.title || "FilaDryer S4")}</div><span class="pill ${s}">${STATUS[s] || s}</span></div>
-<div class="lay ${this._horiz ? "h" : "v"}"><div class="c1">
+<div class="head ${this._expandable ? "tog" : ""}" ${this._expandable ? 'data-act="toggle"' : ""}><ha-icon icon="mdi:printer-3d-nozzle-heat"></ha-icon><div class="title">${esc(this._config.title || "FilaDryer S4")}</div><span class="pill ${s}">${STATUS[s] || s}</span>${this._expandable ? `<ha-icon class="chev ${this._expanded ? "up" : ""}" icon="mdi:chevron-down"></ha-icon>` : ""}</div>
+${this._expandable && !this._expanded ? `<div class="mini">${esc(a.material_label)} · ${a.temperature}°${a.unit} · <span class="clock"></span><div class="bar"><i class="prog"></i></div></div>` : ""}
+<div class="${this._expanded ? "" : "hide "}lay ${this._horiz ? "h" : "v"}"><div class="c1">
 <div class="lcd">
   <div class="lt">
     <div><div class="lab">SV</div><div class="val"><span class="${fl("sv")}">${a.temperature}<small>°${a.unit}</small></span></div></div>
@@ -165,10 +200,62 @@ ${this._horiz ? `<div class="note">${a.ends && s === "drying" ? "Fine prevista a
 </div></div>
 <div class="toast"></div>`;
     this._attrs = a; this._state = s;
+    this._wireDetails(body);
+    this._updateTime();
+  }
+
+  _wireDetails(body) {
     const pres = body.querySelector("details.pres"), seq = body.querySelector("details.seq");
+    if (!pres || !seq) return;
     pres.open = !!this._presOpen;
     pres.addEventListener("toggle", () => (this._presOpen = pres.open));
     seq.addEventListener("toggle", () => { if (this._open !== seq.open) { this._open = seq.open; this._render(); } });
+  }
+
+  _renderMushroom(body, a, s) {
+    const drying = s === "drying", mats = a.materials || {}, steps = a.steps || [];
+    if (this._step >= steps.length) this._step = 0;
+    const cur = steps[this._step] || {};
+    const col = drying ? "var(--fd-amber)" : s === "done" ? "var(--fd-teal)" : "var(--disabled-color, #9e9e9e)";
+    const chip = (key, opts) => `<div class="mchips" data-key="${key}">${opts.map(([v, t]) => `<button data-v="${v}" class="mchip ${String(a[key]) === v ? "on" : ""}" ${drying ? "disabled" : ""}>${t}</button>`).join("")}</div>`;
+    const step = (k, unit, lo, hi) => `<div class="mstep"><button class="mbtn" data-act="dec" data-k="${k}" ${drying || a[k] <= lo ? "disabled" : ""}><ha-icon icon="mdi:minus"></ha-icon></button><span class="mval">${a[k]}<small>${unit}</small></span><button class="mbtn" data-act="inc" data-k="${k}" ${drying || a[k] >= hi ? "disabled" : ""}><ha-icon icon="mdi:plus"></ha-icon></button></div>`;
+    const presetSel = (a.presets || []).map((p) => `<option ${a.preset_values && JSON.stringify(a.preset_values[p]) === JSON.stringify(this._settings(a)) ? "selected" : ""}>${esc(p)}</option>`).join("");
+    const sec = drying ? `<span class="clock"></span> · ${esc(a.material_lcd)} ${a.temperature}°${a.unit}` : s === "done" ? `Completata · ${esc(a.material_lcd)}` : `${esc(a.material_lcd)} · ${a.temperature}°${a.unit} · ${a.hours} h · MO${a.mode}`;
+    const act = drying || s === "done" ? "stop" : "start";
+    const icon = drying ? "mdi:stop" : s === "done" ? "mdi:check" : "mdi:play";
+    body.innerHTML = `
+<div class="m ${this._horiz ? "mh" : ""}">
+ <div class="mrow ${this._expandable ? "tog" : ""}" ${this._expandable ? 'data-act="toggle"' : ""}>
+  <div class="mic" style="--c:${col}"><ha-icon icon="mdi:printer-3d-nozzle-heat"></ha-icon></div>
+  <div class="mtx"><div class="mpri">${esc(this._config.title || "FilaDryer S4")}</div><div class="msec">${sec}</div></div>
+  ${this._horiz ? `<div class="mquick">${chip("mode", [["1", "MO1"], ["2", "MO2"]])}</div>` : ""}
+  <button class="mbtn big ${drying ? "stop" : "go"}" data-act="${act}"><ha-icon icon="${icon}"></ha-icon></button>
+  ${this._expandable ? `<ha-icon class="chev ${this._expanded ? "up" : ""}" icon="mdi:chevron-down"></ha-icon>` : ""}
+ </div>
+ <div class="mbar"><i class="prog" style="width:0"></i></div>
+ <div class="${this._expanded ? "" : "hide "}mbody">
+  <div class="mgrid">
+   <div class="mf"><label>Materiale</label><div class="msel"><ha-icon icon="mdi:printer-3d-nozzle"></ha-icon><select data-key="material" ${drying ? "disabled" : ""}>${Object.entries(mats).map(([k, m]) => `<option value="${k}" ${k === a.material ? "selected" : ""}>${esc(m.label)}</option>`).join("")}</select></div></div>
+   <div class="mf"><label>Temperatura</label>${step("temperature", "°" + a.unit, 35, 70)}</div>
+   <div class="mf"><label>Durata</label>${step("hours", " h", 1, 99)}</div>
+   ${a.mode === "2" ? `<div class="mf"><label>Umidità riavvio</label>${step("humidity", "%", 30, 50)}</div>` : ""}
+   ${this._horiz ? "" : `<div class="mf"><label>Modalità</label>${chip("mode", [["1", "MO1 tempo"], ["2", "MO2 umidità"]])}</div>`}
+   <div class="mf"><label>Unità</label>${chip("unit", [["C", "°C"], ["F", "°F"]])}</div>
+   <div class="mf"><label>LED</label>${chip("led", Object.entries(LED))}</div>
+  </div>
+  <details class="pres"><summary><ha-icon icon="mdi:bookmark-multiple"></ha-icon>Preset (${(a.presets || []).length})</summary>
+   <div class="row"><select class="psel"><option value="">— seleziona —</option>${presetSel}</select><button class="ghost" data-act="load">Carica</button><button class="ghost" data-act="del">Elimina</button></div>
+   <div class="row"><input class="pname" maxlength="80" placeholder="Nome nuovo preset"><button class="ghost" data-act="save">Salva</button></div>
+  </details>
+  <details class="seq" ${this._open ? "open" : ""}><summary><ha-icon icon="mdi:gesture-tap-button"></ha-icon>Tasti da premere</summary>
+   <div class="keys">${[["pwr", "⏻"], ["set", "SET"], ["up", "▲"], ["down", "▼"]].map(([k, t]) => `<div class="key ${(cur.keys || []).includes(k) ? "hl" : ""}">${t}</div>`).join("")}</div>
+   <ol>${steps.map((x, i) => `<li data-step="${i}" class="${i === this._step ? "on" : ""}"><div><div class="st">${esc(x.text)}</div><div class="sd">${esc(x.detail)}</div></div></li>`).join("")}</ol>
+  </details>
+ </div>
+</div>
+<div class="toast"></div>`;
+    this._attrs = a; this._state = s;
+    this._wireDetails(body);
     this._updateTime();
   }
 
@@ -181,16 +268,16 @@ ${this._horiz ? `<div class="note">${a.ends && s === "drying" ? "Fine prevista a
   _updateTime() {
     if (!this._attrs || !this._root) return;
     const clock = this._root.querySelector(".clock"), prog = this._root.querySelector(".prog");
-    if (!clock) return;
+    if (!clock || !prog) return;
     const a = this._attrs;
     if (this._state === "drying" && a.ends) {
       const left = Math.max(0, Math.round((new Date(a.ends) - Date.now()) / 1000));
       clock.textContent = hms(left);
       prog.style.width = `${Math.min(100, 100 - (left / a.duration) * 100)}%`;
     } else if (this._state === "done") {
-      clock.textContent = "FINE"; prog.style.width = "100%";
+      clock.textContent = this._mush ? "" : "FINE"; prog.style.width = "100%";
     } else {
-      clock.textContent = `${pad(a.hours)}:00:00`; prog.style.width = "0";
+      clock.textContent = this._mush ? "" : `${pad(a.hours)}:00:00`; prog.style.width = "0";
     }
   }
 
@@ -199,6 +286,15 @@ ${this._horiz ? `<div class="note">${a.ends && s === "drying" ? "Fine prevista a
     if (!b) return;
     if (b.dataset.step !== undefined) { this._step = +b.dataset.step; this._open = true; this._render(); return; }
     if (b.dataset.v !== undefined && b.parentElement?.dataset.key) { if (!b.disabled) this._call("set", { [b.parentElement.dataset.key]: b.dataset.v }); return; }
+    if (b.dataset.act === "toggle") {
+      this._expanded = !this._expanded; this._render();
+      this.dispatchEvent(new Event("iron-resize", { bubbles: true, composed: true })); return;
+    }
+    if (b.dataset.act === "inc" || b.dataset.act === "dec") {
+      if (b.disabled) return;
+      const k = b.dataset.k, v = +this._attrs[k] + (b.dataset.act === "inc" ? 1 : -1);
+      this._call("set", { [k]: v }); return;
+    }
     const act = b.dataset.act, psel = this._root.querySelector(".psel"), pname = this._root.querySelector(".pname");
     if (act === "start") this._call("start");
     else if (act === "stop") this._call("stop");
