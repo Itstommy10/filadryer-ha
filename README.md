@@ -19,7 +19,12 @@ Il FilaDryer S4 non ha Wi-Fi né Bluetooth: l'integrazione non lo comanda dirett
 
 ```yaml
 type: custom:filadryer-card
+layout: vertical      # oppure horizontal: larghezza piena, tre colonne
+# title: FilaDryer S4
+# show_steps: true    # sequenza tasti aperta (predefinito solo in orizzontale)
 ```
+
+Le opzioni si possono impostare anche dall'editor visuale della card.
 
 La card viene caricata automaticamente dall'integrazione: non serve aggiungere risorse.
 

@@ -2,7 +2,7 @@
 
 DOMAIN = "filadryer"
 NAME = "FilaDryer S4"
-VERSION = "1.0.0"
+VERSION = "1.1.0"
 
 CONF_NOTIFY = "notify_service"
 

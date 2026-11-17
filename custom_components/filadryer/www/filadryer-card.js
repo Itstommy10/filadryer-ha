@@ -10,11 +10,19 @@ class FilaDryerCard extends HTMLElement {
   setConfig(config) {
     this._config = config || {};
     this._step = 0;
-    this._open = this._config.show_steps ?? false;
+    this._horiz = String(this._config.layout || "vertical").toLowerCase().startsWith("h");
+    this._open = this._config.show_steps ?? this._horiz;
   }
   static getStubConfig() { return {}; }
-  getCardSize() { return 7; }
-  getGridOptions() { return { columns: 12, min_columns: 6 }; }
+  getCardSize() { return this._horiz ? 5 : 7; }
+  getGridOptions() { return this._horiz ? { columns: "full", min_columns: 12 } : { columns: 12, min_columns: 6 }; }
+  static getConfigForm() {
+    return { schema: [
+      { name: "layout", selector: { select: { mode: "dropdown", options: [{ value: "vertical", label: "Verticale" }, { value: "horizontal", label: "Orizzontale (larghezza piena)" }] } } },
+      { name: "title", selector: { text: {} } },
+      { name: "show_steps", selector: { boolean: {} } },
+    ] };
+  }
 
   set hass(hass) {
     this._hass = hass;
@@ -47,7 +55,13 @@ class FilaDryerCard extends HTMLElement {
     this._root = this.attachShadow({ mode: "open" });
     this._root.innerHTML = `<style>
 :host{--fd-teal:#25c9a4;--fd-amber:#ffc466;--fd-lcd:#0a1a15;--fd-ink:#8dffe2;--fd-dim:#3d6e60}
-ha-card{padding:16px;overflow:hidden}
+ha-card{padding:16px;overflow:hidden;container-type:inline-size}
+.lay.h{display:grid;grid-template-columns:minmax(260px,1fr) minmax(280px,1.1fr) minmax(280px,1.2fr);gap:18px;align-items:start}
+.lay.h .grid{margin-top:0}.lay.h details{margin-top:0;border-top:0;padding-top:0}.lay.h details+details{margin-top:12px;border-top:1px solid var(--divider-color);padding-top:10px}
+.lay.h .lcd{padding:22px 20px 16px}.lay.h .val{font-size:1.9rem}.lay.h .time{font-size:1.9rem;margin-top:14px}
+.lay.h .c1 .note{font-size:.75rem;color:var(--secondary-text-color);margin-top:10px}
+@container (max-width:900px){.lay.h{grid-template-columns:1fr 1fr}.lay.h .c3{grid-column:1/-1}}
+@container (max-width:560px){.lay.h{grid-template-columns:1fr}}
 .head{display:flex;align-items:center;gap:10px;margin-bottom:12px}
 .head ha-icon{color:var(--fd-teal)}
 .title{font-size:1.1rem;font-weight:600;flex:1}
@@ -114,6 +128,7 @@ li.on{border-color:var(--fd-teal);background:rgba(37,201,164,.08)}
     const presetSel = (a.presets || []).map((p) => `<option ${a.preset_values && JSON.stringify(a.preset_values[p]) === JSON.stringify(this._settings(a)) ? "selected" : ""}>${esc(p)}</option>`).join("");
     body.innerHTML = `
 <div class="head"><ha-icon icon="mdi:printer-3d-nozzle-heat"></ha-icon><div class="title">${esc(this._config.title || "FilaDryer S4")}</div><span class="pill ${s}">${STATUS[s] || s}</span></div>
+<div class="lay ${this._horiz ? "h" : "v"}"><div class="c1">
 <div class="lcd">
   <div class="lt">
     <div><div class="lab">SV</div><div class="val"><span class="${fl("sv")}">${a.temperature}<small>°${a.unit}</small></span></div></div>
@@ -123,6 +138,8 @@ li.on{border-color:var(--fd-teal);background:rgba(37,201,164,.08)}
   <div class="time"><span class="${fl("time")}"><span class="clock"></span></span></div>
   <div class="bar"><i class="prog" style="width:0"></i></div>
 </div>
+${this._horiz ? `<div class="note">${a.ends && s === "drying" ? "Fine prevista alle " + new Date(a.ends).toLocaleTimeString([], {hour: "2-digit", minute: "2-digit"}) : esc(a.material_label) + " · consigliato " + esc(a.material_note)}</div>` : ""}
+</div><div class="c2">
 <div class="grid">
   <div><label>Materiale</label><select data-key="material" ${drying ? "disabled" : ""}>${Object.entries(mats).map(([k, m]) => `<option value="${k}" ${k === a.material ? "selected" : ""}>${esc(m.label)}</option>`).join("")}</select><div class="hint">Consigliato ${esc(a.material_note)}</div></div>
   <div><label>Temperatura SV (35–70)</label><input type="number" min="35" max="70" data-key="temperature" value="${a.temperature}" ${drying ? "disabled" : ""}></div>
@@ -136,6 +153,7 @@ li.on{border-color:var(--fd-teal);background:rgba(37,201,164,.08)}
   <button class="btn go" data-act="start" ${drying ? "disabled" : ""}><ha-icon icon="mdi:play"></ha-icon>Avvia countdown</button>
   <button class="btn stop" data-act="stop" ${s === "idle" ? "disabled" : ""}><ha-icon icon="mdi:stop"></ha-icon>${s === "done" ? "Azzera" : "Ferma"}</button>
 </div>
+</div><div class="c3">
 <details class="pres"><summary><ha-icon icon="mdi:bookmark-multiple"></ha-icon>Preset (${(a.presets || []).length})</summary>
   <div class="row"><select class="psel"><option value="">— seleziona —</option>${presetSel}</select><button class="ghost" data-act="load">Carica</button><button class="ghost" data-act="del">Elimina</button></div>
   <div class="row"><input class="pname" maxlength="80" placeholder="Nome nuovo preset (es. PETG notte)"><button class="ghost" data-act="save">Salva</button></div>
@@ -144,6 +162,7 @@ li.on{border-color:var(--fd-teal);background:rgba(37,201,164,.08)}
   <div class="keys">${[["pwr", "⏻"], ["set", "SET"], ["up", "▲"], ["down", "▼"]].map(([k, t]) => `<div class="key ${(cur.keys || []).includes(k) ? "hl" : ""}">${t}</div>`).join("")}</div>
   <ol>${steps.map((x, i) => `<li data-step="${i}" class="${i === this._step ? "on" : ""}"><div><div class="st">${esc(x.text)}</div><div class="sd">${esc(x.detail)}</div></div></li>`).join("")}</ol>
 </details>
+</div></div>
 <div class="toast"></div>`;
     this._attrs = a; this._state = s;
     const pres = body.querySelector("details.pres"), seq = body.querySelector("details.seq");
